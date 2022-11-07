@@ -132,15 +132,7 @@ const resolvers = {
           book.author === args.author && book.genres.includes(args.genre)
       );
     },
-    allAuthors: () => {
-      return authors.map((author) => {
-        const authorBooks = books.filter((book) => author.name === book.author);
-        return {
-          ...author,
-          bookCount: authorBooks.length,
-        };
-      });
-    },
+    allAuthors: () => authors,
   },
 
   Mutation: {
@@ -167,6 +159,11 @@ const resolvers = {
         author.name === editedAuthor.name ? editedAuthor : author
       );
       return editedAuthor;
+    },
+  },
+  Author: {
+    bookCount: (root) => {
+      return books.filter((book) => book.author === root.name).length;
     },
   },
 };
