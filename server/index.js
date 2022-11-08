@@ -1,9 +1,16 @@
-const { ApolloServer, gql, UserInputError } = require("apollo-server");
+const {
+  ApolloServer,
+  gql,
+  UserInputError,
+  AuthenticationError,
+} = require("apollo-server");
 const mongoose = require("mongoose");
-const { v1: uuid } = require("uuid");
 const Author = require("./models/Author");
 const Book = require("./models/Book");
-const MONGODB_URI = require("./utils/config");
+const { MONGODB_URI, SECRET } = require("./utils/config");
+const bcrypt = require("bcrypt");
+const User = require("./models/User");
+const jwt = require("jsonwebtoken");
 
 console.log("Connecting to db...");
 mongoose
@@ -92,6 +99,17 @@ let books = [
 ];
 
 const typeDefs = gql`
+  type User {
+    username: String!
+    passwordHash: String!
+    favouriteGenre: String!
+    id: ID!
+  }
+
+  type Token {
+    value: String!
+  }
+
   type Book {
     title: String!
     published: Int!
@@ -112,6 +130,7 @@ const typeDefs = gql`
     authorCount: Int!
     allBooks(author: String, genre: String): [Book!]!
     allAuthors: [Author!]!
+    me: User
   }
 
   type Mutation {
@@ -122,6 +141,12 @@ const typeDefs = gql`
       genres: [String!]!
     ): Book
     editAuthor(name: String!, setBornTo: Int!): Author
+    createUser(
+      username: String!
+      password: String!
+      favouriteGenre: String!
+    ): User
+    login(username: String!, password: String!): Token
   }
 `;
 
@@ -145,10 +170,18 @@ const resolvers = {
       }).populate("author");
     },
     allAuthors: async () => Author.find({}),
+    me: (root, args, context) => {
+      return context.currentUser;
+    },
   },
 
   Mutation: {
-    addBook: async (root, args) => {
+    addBook: async (root, args, context) => {
+      const currentUser = context.currentUser;
+      if (!currentUser) {
+        throw new AuthenticationError("Not authenticated");
+      }
+
       const author = await Author.findOne({ name: args.author });
       let newAuthor = author;
       if (!author) {
@@ -156,8 +189,8 @@ const resolvers = {
       }
       const book = new Book({ ...args, author: newAuthor });
       try {
-        newAuthor.save();
         book.save();
+        newAuthor.save();
       } catch (error) {
         throw new UserInputError(error.message, {
           invalidArgs: args,
@@ -166,7 +199,12 @@ const resolvers = {
 
       return book;
     },
-    editAuthor: async (root, args) => {
+    editAuthor: async (root, args, context) => {
+      const currentUser = context.currentUser;
+      if (!currentUser) {
+        throw new AuthenticationError("Not authenticated");
+      }
+
       const author = await Author.findOne({ name: args.name });
       author.born = args.setBornTo;
 
@@ -180,6 +218,41 @@ const resolvers = {
 
       return author;
     },
+    createUser: async (root, args) => {
+      if (!args.password) {
+        throw new UserInputError("Password missing");
+      }
+      if (args.password.length < 5) {
+        throw new UserInputError("Password must be at least 5 characters long");
+      }
+      const passwordHash = await bcrypt.hash(args.password, 10);
+      const user = new User({
+        username: args.username,
+        passwordHash,
+        favouriteGenre: args.favouriteGenre,
+      });
+      return user.save().catch((error) => {
+        throw new UserInputError(error.message, {
+          invalidArgs: args,
+        });
+      });
+    },
+    login: async (root, args) => {
+      const user = await User.findOne({ username: args.username });
+      const passwordCorrect =
+        user === null
+          ? false
+          : await bcrypt.compare(args.password, user.passwordHash);
+      if (!(user && passwordCorrect)) {
+        throw new UserInputError("Invalid username or password");
+      }
+
+      const userForToken = {
+        username: user.username,
+        id: user._id,
+      };
+      return { value: jwt.sign(userForToken, SECRET) };
+    },
   },
   Author: {
     bookCount: async (root) => {
@@ -191,6 +264,14 @@ const resolvers = {
 const server = new ApolloServer({
   typeDefs,
   resolvers,
+  context: async ({ req }) => {
+    const auth = req ? req.headers.authorization : null;
+    if (auth && auth.toLowerCase().startsWith("bearer ")) {
+      const decodedToken = jwt.verify(auth.substring(7), SECRET);
+      const currentUser = await User.findById(decodedToken.id);
+      return { currentUser };
+    }
+  },
 });
 
 server.listen().then(({ url }) => {
