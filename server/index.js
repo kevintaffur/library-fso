@@ -1,5 +1,17 @@
-const { ApolloServer, gql } = require("apollo-server");
+const { ApolloServer, gql, UserInputError } = require("apollo-server");
+const mongoose = require("mongoose");
 const { v1: uuid } = require("uuid");
+const Author = require("./models/Author");
+const Book = require("./models/Book");
+const MONGODB_URI = require("./utils/config");
+
+console.log("Connecting to db...");
+mongoose
+  .connect(MONGODB_URI)
+  .then(() => console.log("Connected to db"))
+  .catch((error) => {
+    console.log("Error:", error.message);
+  });
 
 let authors = [
   {
@@ -83,7 +95,7 @@ const typeDefs = gql`
   type Book {
     title: String!
     published: Int!
-    author: String!
+    author: Author!
     genres: [String!]!
     id: ID!
   }
@@ -136,13 +148,20 @@ const resolvers = {
   },
 
   Mutation: {
-    addBook: (root, args) => {
-      if (!authors.includes(args.author)) {
-        const author = { name: args.author, id: uuid() };
-        authors = authors.concat(author);
+    addBook: async (root, args) => {
+      let author = await Author.findOne({ author: args.author });
+      if (!author) {
+        author = new Author({ name: args.author });
       }
-      const book = { ...args, id: uuid() };
-      books = books.concat(book);
+      const book = new Book({ ...args, author: author });
+      try {
+        author.save();
+        book.save();
+      } catch (error) {
+        throw new UserInputError(error.message, {
+          invalidArgs: args,
+        });
+      }
 
       return book;
     },
