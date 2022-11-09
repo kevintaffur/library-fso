@@ -24,6 +24,14 @@ export const ALL_BOOKS = gql`
   }
 `;
 
+export const FAVOURITE_GENRE = gql`
+  query {
+    me {
+      favouriteGenre
+    }
+  }
+`;
+
 export const LOGIN = gql`
   mutation login($username: String!, $password: String!) {
     login(username: $username, password: $password) {

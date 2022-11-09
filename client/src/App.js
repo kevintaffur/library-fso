@@ -9,6 +9,7 @@ const App = () => {
   const [page, setPage] = useState("authors");
   const [token, setToken] = useState(null);
   const client = useApolloClient();
+  const [recommend, setRecommend] = useState(false);
 
   useEffect(() => {
     const loggedUser = window.localStorage.getItem("library-user-token");
@@ -27,14 +28,27 @@ const App = () => {
     client.resetStore();
   };
 
+  const changePage = (page) => {
+    setPage(page);
+    setRecommend(false);
+  };
+
   return (
     <div>
       <div>
-        <button onClick={() => setPage("authors")}>authors</button>
-        <button onClick={() => setPage("books")}>books</button>
+        <button onClick={() => changePage("authors")}>authors</button>
+        <button onClick={() => changePage("books")}>books</button>
         {token ? (
           <>
-            <button onClick={() => setPage("add")}>add book</button>
+            <button onClick={() => changePage("add")}>add book</button>
+            <button
+              onClick={() => {
+                setRecommend(true);
+                setPage("books");
+              }}
+            >
+              recommend
+            </button>
             <button onClick={logout}>logout</button>
           </>
         ) : (
@@ -43,7 +57,7 @@ const App = () => {
       </div>
 
       <Authors show={page === "authors"} />
-      <Books show={page === "books"} />
+      <Books show={page === "books"} recommend={recommend} />
       <NewBook show={page === "add"} />
       <LoginForm
         setToken={setToken}
