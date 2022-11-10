@@ -28,13 +28,14 @@ const App = () => {
     setToken(null);
     localStorage.clear();
     client.resetStore();
+    setPage("authors");
   };
 
-  if (favouriteGenreQuery.loading) {
+  if (favouriteGenreQuery?.loading) {
     return <div>loading...</div>;
   }
 
-  const favourite = favouriteGenreQuery.data.me.favouriteGenre;
+  const favourite = favouriteGenreQuery.data.me?.favouriteGenre;
 
   return (
     <div>

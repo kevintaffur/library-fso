@@ -1,11 +1,13 @@
 import { useMutation } from "@apollo/client";
 import { useEffect, useState } from "react";
-import { LOGIN } from "../queries";
+import { FAVOURITE_GENRE, LOGIN } from "../queries";
 
 const LoginForm = ({ setToken, show, setPage }) => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [login, result] = useMutation(LOGIN);
+  const [login, result] = useMutation(LOGIN, {
+    refetchQueries: [{ query: FAVOURITE_GENRE }],
+  });
 
   useEffect(() => {
     if (result.data) {
