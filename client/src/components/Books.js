@@ -1,21 +1,24 @@
-import { ALL_BOOKS, FAVOURITE_GENRE } from "../queries";
-import { useQuery } from "@apollo/client";
+import { ALL_BOOKS, ALL_BOOKS_BY_GENRE } from "../queries";
+import { useLazyQuery, useQuery } from "@apollo/client";
 import { useState } from "react";
 
-const Books = ({ show, recommend }) => {
+const Books = ({ show }) => {
   const allBooksQuery = useQuery(ALL_BOOKS);
-  const favouriteGenreQuery = useQuery(FAVOURITE_GENRE);
   const [genreSelection, setGenreSelection] = useState("all");
+  const [getBooksByGenre, { loading, data }] = useLazyQuery(ALL_BOOKS_BY_GENRE);
 
   if (!show) {
     return null;
   }
 
-  if (allBooksQuery.loading || favouriteGenreQuery.loading) {
+  if (allBooksQuery.loading) {
     return <div>loading...</div>;
   }
 
-  const favouriteGenre = favouriteGenreQuery.data.me.favouriteGenre;
+  if (loading) {
+    return <div>loading...</div>;
+  }
+
   const books = allBooksQuery.data.allBooks;
 
   const genres = books.map((book) => {
@@ -25,6 +28,7 @@ const Books = ({ show, recommend }) => {
 
   const handleSelection = (genre) => {
     setGenreSelection(genre);
+    getBooksByGenre({ variables: { genre } });
   };
 
   const booksMap = (a) => (
@@ -37,25 +41,16 @@ const Books = ({ show, recommend }) => {
 
   return (
     <div>
-      {recommend ? (
-        <h2>Recommendations</h2>
-      ) : (
-        <>
-          <h2>Books</h2>
-          {uniqueGenres.map((g) => (
-            <button key={g} onClick={() => handleSelection(g)}>
-              {g}
-            </button>
-          ))}
-          <button onClick={() => handleSelection("all")}>all genres</button>
-          <div>
-            in genre <strong>{genreSelection}</strong>
-          </div>
-        </>
-      )}
+      <h2>Books</h2>
+      {uniqueGenres.map((g) => (
+        <button key={g} onClick={() => handleSelection(g)}>
+          {g}
+        </button>
+      ))}
+      <button onClick={() => handleSelection("all")}>all genres</button>
 
       <div>
-        books in your favourite genre <strong>{favouriteGenre}</strong>
+        in genre <strong>{genreSelection}</strong>
       </div>
 
       <table>
@@ -65,15 +60,9 @@ const Books = ({ show, recommend }) => {
             <th>author</th>
             <th>published</th>
           </tr>
-          {recommend
-            ? books
-                .filter((a) => a.genres.includes(favouriteGenre))
-                .map(booksMap)
-            : genreSelection === "all"
+          {genreSelection === "all"
             ? books.map(booksMap)
-            : books
-                .filter((a) => a.genres.includes(genreSelection))
-                .map(booksMap)}
+            : data.allBooks.map(booksMap)}
         </tbody>
       </table>
     </div>

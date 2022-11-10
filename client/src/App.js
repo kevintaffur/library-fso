@@ -1,15 +1,17 @@
-import { useApolloClient } from "@apollo/client";
+import { useApolloClient, useQuery } from "@apollo/client";
 import { useEffect, useState } from "react";
 import Authors from "./components/Authors";
 import Books from "./components/Books";
 import LoginForm from "./components/LoginForm";
 import NewBook from "./components/NewBook";
+import Recommendations from "./components/Recommendations";
+import { FAVOURITE_GENRE } from "./queries";
 
 const App = () => {
   const [page, setPage] = useState("authors");
   const [token, setToken] = useState(null);
   const client = useApolloClient();
-  const [recommend, setRecommend] = useState(false);
+  const favouriteGenreQuery = useQuery(FAVOURITE_GENRE);
 
   useEffect(() => {
     const loggedUser = window.localStorage.getItem("library-user-token");
@@ -28,25 +30,21 @@ const App = () => {
     client.resetStore();
   };
 
-  const changePage = (page) => {
-    setPage(page);
-    setRecommend(false);
-  };
+  if (favouriteGenreQuery.loading) {
+    return <div>loading...</div>;
+  }
+
+  const favourite = favouriteGenreQuery.data.me.favouriteGenre;
 
   return (
     <div>
       <div>
-        <button onClick={() => changePage("authors")}>authors</button>
-        <button onClick={() => changePage("books")}>books</button>
+        <button onClick={() => setPage("authors")}>authors</button>
+        <button onClick={() => setPage("books")}>books</button>
         {token ? (
           <>
-            <button onClick={() => changePage("add")}>add book</button>
-            <button
-              onClick={() => {
-                setRecommend(true);
-                setPage("books");
-              }}
-            >
+            <button onClick={() => setPage("add")}>add book</button>
+            <button onClick={() => setPage("recommendations")}>
               recommend
             </button>
             <button onClick={logout}>logout</button>
@@ -57,8 +55,9 @@ const App = () => {
       </div>
 
       <Authors show={page === "authors"} />
-      <Books show={page === "books"} recommend={recommend} />
+      <Books show={page === "books"} />
       <NewBook show={page === "add"} />
+      <Recommendations show={page === "recommendations"} data={favourite} />
       <LoginForm
         setToken={setToken}
         show={page === "login"}
