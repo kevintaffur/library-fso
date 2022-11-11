@@ -31,9 +31,7 @@ export const updateCache = (cache, query, added, all) => {
   } else if (all === "Authors") {
     cache.updateQuery(query, ({ allAuthors }) => {
       return {
-        allAuthors: unique(
-          allAuthors.concat({ ...added, bookCount: added.bookCount + 1 })
-        ),
+        allAuthors: unique(allAuthors.concat(added)),
       };
     });
   }

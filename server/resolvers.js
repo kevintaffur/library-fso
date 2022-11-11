@@ -43,7 +43,9 @@ const resolvers = {
       const author = await Author.findOne({ name: args.author });
       let newAuthor = author;
       if (!author) {
-        newAuthor = new Author({ name: args.author });
+        newAuthor = new Author({ name: args.author, bookCount: 1 });
+      } else {
+        newAuthor.bookCount = newAuthor.bookCount + 1;
       }
       const book = new Book({ ...args, author: newAuthor });
       try {
@@ -114,11 +116,11 @@ const resolvers = {
       return { value: jwt.sign(userForToken, SECRET) };
     },
   },
-  Author: {
-    bookCount: async (root) => {
-      return Book.find({ author: root.id }).countDocuments();
-    },
-  },
+  // Author: {
+  //   bookCount: async (root) => {
+  //     return Book.find({ author: root.id }).countDocuments();
+  //   },
+  // },
   Subscription: {
     bookAdded: {
       subscribe: () => pubsub.asyncIterator("BOOK_ADDED"),
