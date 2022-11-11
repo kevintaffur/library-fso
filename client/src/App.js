@@ -1,17 +1,23 @@
-import { useApolloClient, useQuery } from "@apollo/client";
+import { useApolloClient, useQuery, useSubscription } from "@apollo/client";
 import { useEffect, useState } from "react";
 import Authors from "./components/Authors";
 import Books from "./components/Books";
 import LoginForm from "./components/LoginForm";
 import NewBook from "./components/NewBook";
 import Recommendations from "./components/Recommendations";
-import { FAVOURITE_GENRE } from "./queries";
+import { BOOK_ADDED, FAVOURITE_GENRE } from "./queries";
 
 const App = () => {
   const [page, setPage] = useState("authors");
   const [token, setToken] = useState(null);
   const client = useApolloClient();
   const favouriteGenreQuery = useQuery(FAVOURITE_GENRE);
+
+  useSubscription(BOOK_ADDED, {
+    onData: ({ data }) => {
+      window.alert(`new book added: ${data.data.bookAdded.title}`);
+    },
+  });
 
   useEffect(() => {
     const loggedUser = window.localStorage.getItem("library-user-token");
