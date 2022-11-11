@@ -16,9 +16,13 @@ export const BOOK_DETAILS = gql`
     title
     author {
       name
+      born
+      bookCount
+      id
     }
     published
     genres
+    id
   }
 `;
 
@@ -87,6 +91,7 @@ export const CREATE_BOOK = gql`
       }
       published
       genres
+      id
     }
   }
 `;

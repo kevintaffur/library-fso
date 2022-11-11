@@ -5,7 +5,39 @@ import Books from "./components/Books";
 import LoginForm from "./components/LoginForm";
 import NewBook from "./components/NewBook";
 import Recommendations from "./components/Recommendations";
-import { BOOK_ADDED, FAVOURITE_GENRE } from "./queries";
+import {
+  ALL_AUTHORS,
+  ALL_BOOKS,
+  ALL_BOOKS_BY_GENRE,
+  BOOK_ADDED,
+  FAVOURITE_GENRE,
+} from "./queries";
+
+export const updateCache = (cache, query, added, all) => {
+  const unique = (objs) => {
+    const seen = new Set();
+    return objs.filter((obj) => {
+      const identifier = all === "Books" ? obj.title : obj.name;
+      return seen.has(identifier) ? false : seen.add(identifier);
+    });
+  };
+
+  if (all === "Books") {
+    cache.updateQuery(query, ({ allBooks }) => {
+      return {
+        allBooks: unique(allBooks.concat(added)),
+      };
+    });
+  } else if (all === "Authors") {
+    cache.updateQuery(query, ({ allAuthors }) => {
+      return {
+        allAuthors: unique(
+          allAuthors.concat({ ...added, bookCount: added.bookCount + 1 })
+        ),
+      };
+    });
+  }
+};
 
 const App = () => {
   const [page, setPage] = useState("authors");
@@ -14,8 +46,31 @@ const App = () => {
   const favouriteGenreQuery = useQuery(FAVOURITE_GENRE);
 
   useSubscription(BOOK_ADDED, {
-    onData: ({ data }) => {
+    onData: ({ client, data }) => {
       window.alert(`new book added: ${data.data.bookAdded.title}`);
+      updateCache(
+        client.cache,
+        { query: ALL_BOOKS },
+        data.data.bookAdded,
+        "Books"
+      );
+
+      const arr = data.data.bookAdded.genres;
+      for (const value of arr) {
+        updateCache(
+          client.cache,
+          { query: ALL_BOOKS_BY_GENRE, variables: { genre: value } },
+          data.data.bookAdded,
+          "Books"
+        );
+      }
+
+      updateCache(
+        client.cache,
+        { query: ALL_AUTHORS },
+        data.data.bookAdded.author,
+        "Authors"
+      );
     },
   });
 
